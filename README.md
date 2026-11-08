@@ -34,6 +34,7 @@
 * **Режим работы:** Long Polling (локально и в Docker без необходимости белого IP)
 * **LLM-слой:** OpenAI-совместимый интерфейс интеллектуальных языковых моделей с каскадным отказоустойчивым Fallback-режимом
 * **Контейнеризация:** Docker, Docker Compose (мультистейдж сборка на `node:22-alpine` с монтированием тома данных)
+* **Библиотеки и версионирование:** Полный список зависимостей с описанием и версиями приведен в [DEPENDENCIES.md](DEPENDENCIES.md) и [requirements.txt](requirements.txt)
 
 ---
 
@@ -51,16 +52,19 @@ hack-fix-bot/
 │   └── services/
 │       ├── session.ts      # Менеджер состояний пользователей (FSM, мультипроектность)
 │       └── llm.ts          # Интеграция с языковой моделью + Fallback
-├── Dockerfile              # Мультистейдж сборка Docker (Alpine)
-├── docker-compose.yml      # Описание сервиса для быстрого развертывания
+├── Dockerfile              # Мультистейдж сборка Docker-образа (node:22-alpine)
+├── docker-compose.yml      # Описание сервиса для оркестрации контейнера
+├── docker-run.sh           # Скрипт сборки и запуска через командную строку
+├── DEPENDENCIES.md         # Перечень всех используемых библиотек и их версий
+├── requirements.txt        # Текстовый список зависимостей
 ├── tsconfig.json           # Настройки TypeScript
-├── package.json            # Зависимости и скрипты
+├── package.json            # Зависимости и npm-скрипты
 └── .env.example            # Шаблон переменных окружения
 ```
 
 ---
 
-## 🚀 Быстрый старт через Docker (Рекомендуемый)
+## 🚀 Запуск через Docker
 
 Убедитесь, что установлены **Docker** и **Docker Compose**.
 
@@ -82,20 +86,48 @@ hack-fix-bot/
    ```
    *(Если `LLM_API_KEY` не указан, бот автоматически использует встроенный методический Fallback-модуль — проект полностью работоспособен без внешних платных ключей!)*
 
-3. **Запустите контейнер в одну команду:**
-   ```bash
-   docker compose up --build -d
-   ```
+### Вариант А. Запуск через Docker Compose (Рекомендуемый)
 
-4. **Просмотр логов работы бота:**
-   ```bash
-   docker compose logs -f
-   ```
+```bash
+# 1. Сборка и фоновый запуск контейнера:
+docker compose up --build -d
 
-5. **Остановка:**
-   ```bash
-   docker compose down
-   ```
+# 2. Просмотр логов работы бота в реальном времени:
+docker compose logs -f
+
+# 3. Остановка контейнера:
+docker compose down
+```
+
+### Вариант Б. Запуск через командную строку (Docker CLI)
+
+Если требуется собрать образ и запустить контейнер напрямую через терминал (без Docker Compose):
+
+```bash
+# 1. Сборка Docker-образа:
+docker build -t vector-max-bot:latest .
+
+# 2. Запуск контейнера в фоне с монтированием тома данных и переменными окружения:
+docker run -d \
+  --name vector-max-bot \
+  --restart unless-stopped \
+  --env-file .env \
+  -v "$(pwd)/data:/app/data" \
+  vector-max-bot:latest
+
+# 3. Просмотр логов:
+docker logs -f vector-max-bot
+
+# 4. Остановка и удаление контейнера:
+docker stop vector-max-bot && docker rm vector-max-bot
+```
+
+> 💡 **Быстрый запуск готовым скриптом:**  
+> В проект включен готовый bash-скрипт, выполняющий шаги сборки и запуска в одну команду:  
+> ```bash
+> chmod +x docker-run.sh
+> ./docker-run.sh
+> ```
 
 ---
 
