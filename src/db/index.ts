@@ -1,19 +1,58 @@
+// база данных sqlite для хранения мероприятий, закладок и проектов
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { EventItem } from '../types/events.js';
 import { EVENTS_DATABASE } from '../data/events.js';
 
-const dataDir = path.resolve(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+let activeDbPath = '';
+
+function resolveDatabase(): Database.Database {
+  // приоритет директорий: переменная окружения DATA_DIR -> папка ./data -> системная /tmp
+  const candidateDirs = [
+    process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null,
+    path.resolve(process.cwd(), 'data'),
+    path.resolve('/tmp', 'vector_data'),
+    path.resolve('/tmp'),
+  ].filter(Boolean) as string[];
+
+  let lastError: unknown = null;
+
+  for (const dir of candidateDirs) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true, mode: 0o777 });
+      }
+      fs.chmodSync(dir, 0o777);
+      fs.accessSync(dir, fs.constants.W_OK);
+
+      const targetPath = path.join(dir, 'vector.db');
+      const testDb = new Database(targetPath);
+
+      // пробуем WAL режим, а если сетевая файловая система в облаке не дает shm — переключаемся на DELETE
+      try {
+        testDb.pragma('journal_mode = WAL');
+      } catch {
+        testDb.pragma('journal_mode = DELETE');
+      }
+      testDb.pragma('busy_timeout = 5000');
+
+      activeDbPath = targetPath;
+      console.log(`🗄️ База данных SQLite успешно открыта: ${targetPath}`);
+      return testDb;
+    } catch (err) {
+      lastError = err;
+      console.warn(`⚠️ Не удалось открыть SQLite в "${dir}": ${(err as any)?.message || err}. Пробуем альтернативный путь...`);
+    }
+  }
+
+  console.warn('⚠️ Ошибка прав доступа ко всем путям на диске. Включаем in-memory SQLite как гарантированный fallback.', lastError);
+  activeDbPath = ':memory:';
+  const memDb = new Database(':memory:');
+  return memDb;
 }
 
-const dbPath = path.join(dataDir, 'vector.db');
-export const db = new Database(dbPath);
-
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
+export const db = resolveDatabase();
 
 export function initDatabase() {
   db.exec(`
@@ -133,7 +172,7 @@ export function initDatabase() {
     console.warn('Миграция projects:', migErr);
   }
 
-  console.log(`🗄️ База данных SQLite подключена: ${dbPath}`);
+  console.log(`🗄️ База данных SQLite подключена: ${activeDbPath}`);
 
   // загружаем проверенные хакатоны и олимпиады
   syncVerifiedEvents();

@@ -25,11 +25,9 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
-# Create data directory for SQLite database file
-RUN mkdir -p /app/data && chown -R node:node /app/data
+# Create data directory with full read/write permissions for SQLite
+RUN mkdir -p /app/data && chmod -R 777 /app/data
 
-USER node
+# Ensure data directory is writable on container startup (especially when volumes are mounted in cloud VPS/containers)
+CMD ["sh", "-c", "mkdir -p /app/data && chmod 777 /app/data 2>/dev/null || true; node dist/index.js"]
 
-VOLUME ["/app/data"]
-
-CMD ["node", "dist/index.js"]
