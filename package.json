@@ -1,0 +1,40 @@
+{
+  "name": "vector-max-bot",
+  "version": "1.0.0",
+  "description": "Чат-бот «ВЕКТОР» для мессенджера MAX (Сферум) — ИИ-наставник школьников и педагогов в проектной и конкурсной деятельности",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:logs": "docker compose logs -f",
+    "docker:down": "docker compose down",
+    "db:clean": "node -e \"const db = (await import('better-sqlite3')).default('data/vector.db'); db.exec('DELETE FROM user_bookmarks; DELETE FROM projects; DELETE FROM user_projects;'); console.log('✅ Пользовательские тестовые данные очищены.');\""
+  },
+  "keywords": [
+    "max-messenger",
+    "bot",
+    "sferum",
+    "ai",
+    "hackathon",
+    "education"
+  ],
+  "author": "Команда ВЕКТОР",
+  "license": "MIT",
+  "dependencies": {
+    "@maxhub/max-bot-api": "^1.1.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^5.12.0",
+    "openai": "^4.85.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
